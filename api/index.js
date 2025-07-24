@@ -167,19 +167,19 @@ module.exports = async (req, res) => {
   }
 
   if (req.url === '/health' || req.url === '/') {
-    log("Health check requested");
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'healthy',
-      server: SERVER_INFO.name,
-      version: SERVER_INFO.version,
-      protocol: MCP_PROTOCOL_VERSION,
-      timestamp,
-      tools: TOOLS.map(t => t.name),
-      endpoint: '/sse'
-    }));
-    return;
-  }
+  log("Health check requested");
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    status: 'healthy',
+    server: SERVER_INFO.name,
+    version: SERVER_INFO.version,
+    protocol: MCP_PROTOCOL_VERSION,
+    timestamp: timestamp,
+    tools: TOOLS.map(t => t.name),
+    endpoint: '/sse'
+  }));
+  return;
+}
 
   if (req.url?.includes('favicon')) {
     res.writeHead(404);
