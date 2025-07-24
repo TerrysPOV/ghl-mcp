@@ -1,3 +1,4 @@
+// Triggering redeploy
 // ChatGPT-compliant MCP Server for GoHighLevel
 // Implements strict MCP 2024-11-05 protocol requirements
 
