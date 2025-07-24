@@ -4,13 +4,11 @@
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 
-// Server information - ChatGPT requires specific format
 const SERVER_INFO = {
   name: "ghl-mcp-server",
   version: "1.0.0"
 };
 
-// Only these tool names work with ChatGPT
 const TOOLS = [
   {
     name: "search",
@@ -53,42 +51,28 @@ function log(message, data = null) {
 }
 
 function createJsonRpcResponse(id, result = null, error = null) {
-  const response = {
-    jsonrpc: "2.0",
-    id: id
-  };
-  if (error) {
-    response.error = error;
-  } else {
-    response.result = result;
-  }
+  const response = { jsonrpc: "2.0", id };
+  if (error) response.error = error;
+  else response.result = result;
   return response;
 }
 
 function createJsonRpcNotification(method, params = {}) {
-  return {
-    jsonrpc: "2.0",
-    method: method,
-    params: params
-  };
+  return { jsonrpc: "2.0", method, params };
 }
 
 function handleInitialize(request) {
   log("Handling initialize request", request.params);
   return createJsonRpcResponse(request.id, {
     protocolVersion: MCP_PROTOCOL_VERSION,
-    capabilities: {
-      tools: {}
-    },
+    capabilities: { tools: {} },
     serverInfo: SERVER_INFO
   });
 }
 
 function handleToolsList(request) {
   log("Handling tools/list request");
-  return createJsonRpcResponse(request.id, {
-    tools: TOOLS
-  });
+  return createJsonRpcResponse(request.id, { tools: TOOLS });
 }
 
 function handleToolsCall(request) {
@@ -113,9 +97,7 @@ function handleToolsCall(request) {
     });
   }
 
-  return createJsonRpcResponse(request.id, {
-    content: content
-  });
+  return createJsonRpcResponse(request.id, { content });
 }
 
 function handlePing(request) {
@@ -179,26 +161,29 @@ module.exports = async (req, res) => {
   setCORSHeaders(res);
 
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
+    res.writeHead(200);
+    res.end();
     return;
   }
 
   if (req.url === '/health' || req.url === '/') {
     log("Health check requested");
-    res.status(200).json({
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
       status: 'healthy',
       server: SERVER_INFO.name,
       version: SERVER_INFO.version,
       protocol: MCP_PROTOCOL_VERSION,
-      timestamp: timestamp,
+      timestamp,
       tools: TOOLS.map(t => t.name),
       endpoint: '/sse'
-    });
+    }));
     return;
   }
 
   if (req.url?.includes('favicon')) {
-    res.status(404).end();
+    res.writeHead(404);
+    res.end();
     return;
   }
 
@@ -217,20 +202,16 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       log("SSE connection established");
 
-      // Initialization
       sendSSE(res, createJsonRpcNotification("notification/initialized", {}));
 
-      // Send tools list to Claude
       sendSSE(res, createJsonRpcNotification("notification/tools/list_changed", {
         tools: TOOLS
       }));
 
-      // Heartbeat ping
       const pingInterval = setInterval(() => {
         sendSSE(res, createJsonRpcNotification("notification/ping"));
       }, 15000);
 
-      // Cleanup
       req.on('close', () => {
         log("SSE connection closed");
         clearInterval(pingInterval);
@@ -254,9 +235,7 @@ module.exports = async (req, res) => {
       log("Processing JSON-RPC POST request");
 
       let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
+      req.on('data', chunk => { body += chunk.toString(); });
 
       req.on('end', () => {
         try {
@@ -281,5 +260,6 @@ module.exports = async (req, res) => {
   }
 
   log("Unknown endpoint", req.url);
-  res.status(404).json({ error: 'Not found' });
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
 };

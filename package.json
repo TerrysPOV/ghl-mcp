@@ -2,12 +2,12 @@
   "name": "@mastanley13/ghl-mcp-server",
   "version": "1.0.0",
   "description": "GoHighLevel MCP Server for Claude Desktop and ChatGPT integration",
-  "main": "dist/server.js",
+  "main": "server.js",
   "bin": {
-    "ghl-mcp-server": "dist/server.js"
+    "ghl-mcp-server": "server.js"
   },
   "files": [
-    "dist/",
+    "server.js",
     "README.md",
     "package.json"
   ],
@@ -16,10 +16,10 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --exec ts-node src/http-server.ts",
-    "start": "node dist/http-server.js",
-    "start:stdio": "node dist/server.js",
-    "start:http": "node dist/http-server.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "start:stdio": "node server.js",
+    "start:http": "node server.js",
     "vercel-build": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "jest",
