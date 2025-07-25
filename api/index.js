@@ -19,11 +19,18 @@ try {
 
   toolFiles.forEach(file => {
     if (file.endsWith(".js")) {
-      const toolModule = require(path.join(toolsDirectory, file));
-      if (toolModule && toolModule.tool && toolModule.handler) {
-        loadedTools.push(toolModule);
-      } else {
-        console.warn(`[MCP] Skipped file ${file} - missing 'tool' or 'handler'`);
+      try {
+        console.log(`[MCP] Loading tool: ${file}`);
+        const toolModule = require(path.join(toolsDirectory, file));
+        if (toolModule && toolModule.tool && toolModule.handler) {
+          loadedTools.push(toolModule);
+          console.log(`[MCP] ✅ Loaded tool: ${file}`);
+        } else {
+          console.warn(`[MCP] ⚠️ Skipped file ${file} - missing 'tool' or 'handler'`);
+          console.warn(`[MCP] Module exports:`, Object.keys(toolModule || {}));
+        }
+      } catch (moduleError) {
+        console.error(`[MCP] ❌ Error loading tool ${file}:`, moduleError.message);
       }
     }
   });

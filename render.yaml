@@ -11,3 +11,11 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: GHL_API_KEY
+        sync: false  # This will need to be set in Render dashboard
+      - key: GHL_BASE_URL
+        value: https://services.leadconnectorhq.com
+      - key: GHL_LOCATION_ID
+        sync: false  # This will need to be set in Render dashboard
+      - key: GHL_API_VERSION
+        value: "2021-07-28"
