@@ -1,4 +1,4 @@
-// index.js
+// api/index.js
 
 const fs = require("fs");
 const path = require("path");
@@ -143,12 +143,13 @@ module.exports = async (req, res) => {
   setCORSHeaders(res);
 
   if (req.method === "OPTIONS") {
-    res.status(200).end();
+    res.writeHead(200);
+    res.end();
     return;
   }
 
   if (req.url === "/health" || req.url === "/") {
-    res.status(200).json({
+    const response = {
       status: "healthy",
       server: SERVER_INFO.name,
       version: SERVER_INFO.version,
@@ -156,12 +157,16 @@ module.exports = async (req, res) => {
       timestamp,
       tools: loadedTools.map(t => t.tool.name),
       endpoint: "/sse"
-    });
+    };
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(response));
     return;
   }
 
   if (req.url?.includes("favicon")) {
-    res.status(404).end();
+    res.writeHead(404);
+    res.end();
     return;
   }
 
@@ -216,5 +221,6 @@ module.exports = async (req, res) => {
     }
   }
 
-  res.status(404).json({ error: "Not found" });
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "Not found" }));
 };
