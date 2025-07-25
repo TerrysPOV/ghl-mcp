@@ -11,7 +11,7 @@ const SERVER_INFO = {
 };
 
 // Dynamic tool loading
-const toolsDirectory = path.join(__dirname, "tools");
+const toolsDirectory = path.join(__dirname, "..", "src", "tools");
 const loadedTools = [];
 
 fs.readdirSync(toolsDirectory).forEach(file => {
