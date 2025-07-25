@@ -11,7 +11,7 @@ const SERVER_INFO = {
 };
 
 // Dynamic tool loading
-const toolsDirectory = path.join(__dirname, "src", "tools");
+const toolsDirectory = path.join(__dirname, "..", "..", "src", "tools");
 console.log("[MCP] Loading tools from:", toolsDirectory);
 const loadedTools = [];
 
