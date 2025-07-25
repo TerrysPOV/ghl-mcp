@@ -1,6 +1,7 @@
-// Triggering redeploy
-// ChatGPT-compliant MCP Server for GoHighLevel
-// Implements strict MCP 2024-11-05 protocol requirements
+// index.js
+
+const fs = require("fs");
+const path = require("path");
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 
@@ -9,41 +10,18 @@ const SERVER_INFO = {
   version: "1.0.0"
 };
 
-const TOOLS = [
-  {
-    name: "search",
-    description: "Search for information in GoHighLevel CRM system",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string",
-          description: "Search query for GoHighLevel data"
-        }
-      },
-      required: ["query"]
-    }
-  },
-  {
-    name: "retrieve",
-    description: "Retrieve specific data from GoHighLevel",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: {
-          type: "string",
-          description: "ID of the item to retrieve"
-        },
-        type: {
-          type: "string",
-          enum: ["contact", "conversation", "blog"],
-          description: "Type of item to retrieve"
-        }
-      },
-      required: ["id", "type"]
+// Dynamic tool loading
+const toolsDirectory = path.join(__dirname, "tools");
+const loadedTools = [];
+
+fs.readdirSync(toolsDirectory).forEach(file => {
+  if (file.endsWith(".js")) {
+    const toolModule = require(path.join(toolsDirectory, file));
+    if (toolModule && toolModule.tool && toolModule.handler) {
+      loadedTools.push(toolModule);
     }
   }
-];
+});
 
 function log(message, data = null) {
   const timestamp = new Date().toISOString();
@@ -72,32 +50,34 @@ function handleInitialize(request) {
 
 function handleToolsList(request) {
   log("Handling tools/list request");
-  return createJsonRpcResponse(request.id, { tools: TOOLS });
+  return createJsonRpcResponse(request.id, {
+    tools: loadedTools.map(t => t.tool)
+  });
 }
 
 function handleToolsCall(request) {
   const { name, arguments: args } = request.params;
-  log("Handling tools/call request", { tool: name, args });
+  log("Handling tools/call", { name, args });
 
-  let content;
-  if (name === "search") {
-    content = [{
-      type: "text",
-      text: `GoHighLevel Search Results for: "${args.query}"\n\n✅ Found Results:\n• Contact: John Doe (john@example.com)\n• Contact: Jane Smith (jane@example.com)\n• Conversation: "Follow-up call scheduled"\n• Blog Post: "How to Generate More Leads"\n\n📊 Search completed successfully in GoHighLevel CRM.`
-    }];
-  } else if (name === "retrieve") {
-    content = [{
-      type: "text",
-      text: `GoHighLevel ${args.type} Retrieved: ID ${args.id}\n\n📄 Details:\n• Name: Sample ${args.type}\n• Status: Active\n• Last Updated: ${new Date().toISOString()}\n• Source: GoHighLevel CRM\n\n✅ Data retrieved successfully from GoHighLevel.`
-    }];
-  } else {
+  const toolEntry = loadedTools.find(t => t.tool.name === name);
+  if (!toolEntry) {
     return createJsonRpcResponse(request.id, null, {
       code: -32601,
-      message: `Method not found: ${name}`
+      message: `Tool not found: ${name}`
     });
   }
 
-  return createJsonRpcResponse(request.id, { content });
+  try {
+    const content = toolEntry.handler(args);
+    return createJsonRpcResponse(request.id, { content });
+  } catch (err) {
+    log("Tool handler error", err.message);
+    return createJsonRpcResponse(request.id, null, {
+      code: -32000,
+      message: `Error running tool ${name}`,
+      data: err.message
+    });
+  }
 }
 
 function handlePing(request) {
@@ -107,8 +87,6 @@ function handlePing(request) {
 
 function processJsonRpcMessage(message) {
   try {
-    log("Processing JSON-RPC message", { method: message.method, id: message.id });
-
     if (message.jsonrpc !== "2.0") {
       return createJsonRpcResponse(message.id, null, {
         code: -32600,
@@ -117,10 +95,14 @@ function processJsonRpcMessage(message) {
     }
 
     switch (message.method) {
-      case "initialize": return handleInitialize(message);
-      case "tools/list": return handleToolsList(message);
-      case "tools/call": return handleToolsCall(message);
-      case "ping": return handlePing(message);
+      case "initialize":
+        return handleInitialize(message);
+      case "tools/list":
+        return handleToolsList(message);
+      case "tools/call":
+        return handleToolsCall(message);
+      case "ping":
+        return handlePing(message);
       default:
         return createJsonRpcResponse(message.id, null, {
           code: -32601,
@@ -139,114 +121,90 @@ function processJsonRpcMessage(message) {
 
 function sendSSE(res, data) {
   try {
-    const message = typeof data === 'string' ? data : JSON.stringify(data);
+    const message = typeof data === "string" ? data : JSON.stringify(data);
     res.write(`data: ${message}\n\n`);
-    log("Sent SSE message", { type: typeof data });
+    log("Sent SSE message");
   } catch (error) {
     log("Error sending SSE", error.message);
   }
 }
 
 function setCORSHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
-  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
 }
 
 module.exports = async (req, res) => {
   const timestamp = new Date().toISOString();
   log(`${req.method} ${req.url}`);
-  log(`User-Agent: ${req.headers['user-agent']}`);
+  log(`User-Agent: ${req.headers["user-agent"]}`);
   setCORSHeaders(res);
 
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
     return;
   }
 
-  if (req.url === '/health' || req.url === '/') {
-  log("Health check requested");
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({
-    status: 'healthy',
-    server: SERVER_INFO.name,
-    version: SERVER_INFO.version,
-    protocol: MCP_PROTOCOL_VERSION,
-    timestamp: timestamp,
-    tools: TOOLS.map(t => t.name),
-    endpoint: '/sse'
-  }));
-  return;
-}
-
-  if (req.url?.includes('favicon')) {
-    res.writeHead(404);
-    res.end();
+  if (req.url === "/health" || req.url === "/") {
+    res.status(200).json({
+      status: "healthy",
+      server: SERVER_INFO.name,
+      version: SERVER_INFO.version,
+      protocol: MCP_PROTOCOL_VERSION,
+      timestamp,
+      tools: loadedTools.map(t => t.tool.name),
+      endpoint: "/sse"
+    });
     return;
   }
 
-  if (req.url === '/sse') {
-    log("MCP SSE endpoint requested");
+  if (req.url?.includes("favicon")) {
+    res.status(404).end();
+    return;
+  }
 
+  if (req.url === "/sse") {
     res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Accept',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type, Accept",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
     });
 
-    if (req.method === 'GET') {
-      log("SSE connection established");
-
+    if (req.method === "GET") {
       sendSSE(res, createJsonRpcNotification("notification/initialized", {}));
-
       sendSSE(res, createJsonRpcNotification("notification/tools/list_changed", {
-        tools: TOOLS
+        tools: loadedTools.map(t => t.tool)
       }));
 
       const pingInterval = setInterval(() => {
         sendSSE(res, createJsonRpcNotification("notification/ping"));
       }, 15000);
 
-      req.on('close', () => {
-        log("SSE connection closed");
-        clearInterval(pingInterval);
-      });
-
-      req.on('error', (error) => {
-        log("SSE connection error", error.message);
-        clearInterval(pingInterval);
-      });
+      req.on("close", () => clearInterval(pingInterval));
+      req.on("error", () => clearInterval(pingInterval));
 
       setTimeout(() => {
-        log("SSE connection auto-closing before timeout");
-        clearInterval(pingInterval);
         res.end();
+        clearInterval(pingInterval);
       }, 50000);
-
       return;
     }
 
-    if (req.method === 'POST') {
-      log("Processing JSON-RPC POST request");
-
-      let body = '';
-      req.on('data', chunk => { body += chunk.toString(); });
-
-      req.on('end', () => {
+    if (req.method === "POST") {
+      let body = "";
+      req.on("data", chunk => body += chunk.toString());
+      req.on("end", () => {
         try {
-          log("Received POST body", body);
           const message = JSON.parse(body);
           const response = processJsonRpcMessage(message);
-          log("Sending JSON-RPC response", response);
           sendSSE(res, response);
           setTimeout(() => res.end(), 100);
-        } catch (error) {
-          log("JSON parse error", error.message);
+        } catch (err) {
           sendSSE(res, createJsonRpcResponse(null, null, {
             code: -32700,
             message: "Parse error"
@@ -254,12 +212,9 @@ module.exports = async (req, res) => {
           res.end();
         }
       });
-
       return;
     }
   }
 
-  log("Unknown endpoint", req.url);
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Not found' }));
+  res.status(404).json({ error: "Not found" });
 };

@@ -1,10 +1,16 @@
 const http = require('http');
 const handler = require('./api/index');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // MCP convention prefers 10000
 
 const server = http.createServer((req, res) => {
-  handler(req, res);
+  try {
+    handler(req, res);
+  } catch (error) {
+    console.error('[MCP] Unhandled error in request handler:', error);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Internal Server Error' }));
+  }
 });
 
 server.listen(PORT, () => {
