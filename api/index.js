@@ -13,10 +13,12 @@ const SERVER_INFO = {
 // Dynamic tool loading
 // ✅ Correct relative path from api/index.js to src/tools
 const toolsDirectory = path.join(__dirname, "..", "src", "tools");
+console.log("[MCP] Loading tools from:", toolsDirectory);
+console.log("[MCP] Tool files found:", fs.readdirSync(toolsDirectory));
 const loadedTools = [];
 
 fs.readdirSync(toolsDirectory).forEach(file => {
-  if (file.endsWith(".js")) {
+  if (file.endsWith(".ts") || file.endsWith(".js")) {
     const toolModule = require(path.join(toolsDirectory, file));
     if (toolModule && toolModule.tool && toolModule.handler) {
       loadedTools.push(toolModule);
