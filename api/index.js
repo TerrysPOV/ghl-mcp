@@ -190,6 +190,38 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // Handle OAuth dynamic client registration for Claude Code compatibility
+  if (req.url === "/register" || req.url === "/oauth/register" || req.url === "/.well-known/mcp/client") {
+    res.setHeader("Content-Type", "application/json");
+    res.statusCode = 200;
+    res.end(JSON.stringify({
+      client_id: "ghl-mcp-server",
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_secret: "not-required",
+      client_secret_expires_at: 0,
+      redirect_uris: ["http://localhost:3000/callback"],
+      response_types: ["code"],
+      grant_types: ["authorization_code"],
+      application_type: "web",
+      client_name: "GoHighLevel MCP Server",
+      scope: "mcp"
+    }));
+    return;
+  }
+
+  // Handle auth/token endpoint
+  if (req.url.startsWith("/auth") || req.url.startsWith("/oauth") || req.url.startsWith("/token")) {
+    res.setHeader("Content-Type", "application/json");
+    res.statusCode = 200;
+    res.end(JSON.stringify({
+      access_token: "ghl-mcp-token",
+      token_type: "bearer",
+      expires_in: 3600,
+      scope: "mcp"
+    }));
+    return;
+  }
+
   if (req.url === "/sse") {
     res.writeHead(200, {
       "Content-Type": "text/event-stream",

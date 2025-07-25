@@ -144,18 +144,31 @@ https://ghl-mcp-4o2o.onrender.com
 
 ### Claude Desktop MCP
 
-Add to your `claude_desktop_config.json`:
+Our server uses a custom HTTP JSON-RPC implementation that works with direct HTTP requests. For Claude Desktop integration, you have two options:
 
+#### Option 1: Direct HTTP Integration (Recommended)
+Use curl or HTTP client directly:
+```bash
+# This server works with direct HTTP requests to /sse endpoint
+curl -X POST https://ghl-mcp-4o2o.onrender.com/sse \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": "1", "method": "tools/list", "params": {}}'
+```
+
+#### Option 2: Claude Code HTTP MCP (Experimental)
+Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
     "gohighlevel": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/server-fetch", "https://ghl-mcp-4o2o.onrender.com"]
+      "args": ["@modelcontextprotocol/server-fetch", "https://ghl-mcp-4o2o.onrender.com/sse"]
     }
   }
 }
 ```
+
+**Note**: This server is optimized for direct HTTP/API integration rather than the standard MCP protocol. If you encounter connection issues with Claude Desktop, use the direct HTTP API instead.
 
 ### Direct HTTP API
 
