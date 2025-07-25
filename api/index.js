@@ -11,8 +11,8 @@ const SERVER_INFO = {
 };
 
 // Dynamic tool loading
-const toolsDirectory = path.join(__dirname, "..", "..", "src", "tools");
-console.log("[MCP] Loading tools from:", toolsDirectory);
+// ✅ Correct relative path from api/index.js to src/tools
+const toolsDirectory = path.join(__dirname, "..", "src", "tools");
 const loadedTools = [];
 
 fs.readdirSync(toolsDirectory).forEach(file => {
