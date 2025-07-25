@@ -1,3 +1,6 @@
+require('dotenv').config();
+console.log('[DEBUG] GHL_API_KEY:', process.env.GHL_API_KEY);
+console.log('[DEBUG] GHL_BASE_URL:', process.env.GHL_BASE_URL);
 const http = require('http');
 const handler = require('./api/index');
 

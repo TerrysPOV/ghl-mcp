@@ -83,3 +83,24 @@ export function isWorkflowTool(toolName: string): boolean {
   
   return workflowToolNames.includes(toolName);
 } 
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+const apiKey = process.env.GHL_API_KEY!;
+const baseUrl = process.env.GHL_BASE_URL!;
+
+if (!apiKey || !baseUrl) {
+  throw new Error("Missing GHL_API_KEY or GHL_BASE_URL in environment variables.");
+}
+
+const client = new GHLApiClient({ 
+  accessToken: apiKey, 
+  baseUrl, 
+  version: process.env.GHL_API_VERSION || '2021-07-28',
+  locationId: process.env.GHL_LOCATION_ID || ''
+});
+const instance = new WorkflowTools(client);
+
+export const tool = instance.getTools();
+export const handler = instance.executeWorkflowTool.bind(instance);

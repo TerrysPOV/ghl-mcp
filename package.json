@@ -17,9 +17,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "nodemon server.js",
-    "start": "node dist/server.js",
-    "start:stdio": "node dist/server.js",
-    "start:http": "node dist/server.js",
+    "start": "node server.js",
+    "start:stdio": "node server.js",
+    "start:http": "node server.js",
+    "start:dist": "node dist/server.js",
     "vercel-build": "npm run build",
     "prepublishOnly": "npm run build",
     "test": "jest",

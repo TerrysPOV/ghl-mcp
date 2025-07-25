@@ -1,34 +1,39 @@
-// api/index.js
-
 const fs = require("fs");
 const path = require("path");
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
-
 const SERVER_INFO = {
   name: "ghl-mcp-server",
   version: "1.0.0"
 };
 
-// Dynamic tool loading
-// ✅ Correct relative path from api/index.js to src/tools
-const toolsDirectory = path.join(__dirname, "..", "src", "tools");
+// Load compiled JS tools from dist/tools
+const toolsDirectory = path.join(__dirname, "..", "dist", "tools");
 console.log("[MCP] Loading tools from:", toolsDirectory);
-console.log("[MCP] Tool files found:", fs.readdirSync(toolsDirectory));
+
 const loadedTools = [];
 
-fs.readdirSync(toolsDirectory).forEach(file => {
-  if (file.endsWith(".ts") || file.endsWith(".js")) {
-    const toolModule = require(path.join(toolsDirectory, file));
-    if (toolModule && toolModule.tool && toolModule.handler) {
-      loadedTools.push(toolModule);
+try {
+  const toolFiles = fs.readdirSync(toolsDirectory);
+  console.log("[MCP] Tool files found:", toolFiles);
+
+  toolFiles.forEach(file => {
+    if (file.endsWith(".js")) {
+      const toolModule = require(path.join(toolsDirectory, file));
+      if (toolModule && toolModule.tool && toolModule.handler) {
+        loadedTools.push(toolModule);
+      } else {
+        console.warn(`[MCP] Skipped file ${file} - missing 'tool' or 'handler'`);
+      }
     }
-  }
-});
+  });
+} catch (err) {
+  console.error("[MCP] Error loading tools:", err.message);
+}
 
 function log(message, data = null) {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [MCP] ${message}${data ? ': ' + JSON.stringify(data) : ''}`);
+  console.log(`[${timestamp}] [MCP] ${message}${data ? ": " + JSON.stringify(data) : ""}`);
 }
 
 function createJsonRpcResponse(id, result = null, error = null) {
@@ -58,11 +63,17 @@ function handleToolsList(request) {
   });
 }
 
-function handleToolsCall(request) {
+async function handleToolsCall(request) {
   const { name, arguments: args } = request.params;
   log("Handling tools/call", { name, args });
 
-  const toolEntry = loadedTools.find(t => t.tool.name === name);
+  const toolEntry = loadedTools.find(t => {
+    if (Array.isArray(t.tool)) {
+      return t.tool.some(singleTool => singleTool.name === name);
+    }
+    return t.tool.name === name;
+  });
+
   if (!toolEntry) {
     return createJsonRpcResponse(request.id, null, {
       code: -32601,
@@ -71,8 +82,8 @@ function handleToolsCall(request) {
   }
 
   try {
-    const content = toolEntry.handler(args);
-    return createJsonRpcResponse(request.id, { content });
+    const result = await toolEntry.handler(name, args);
+    return createJsonRpcResponse(request.id, result);
   } catch (err) {
     log("Tool handler error", err.message);
     return createJsonRpcResponse(request.id, null, {
@@ -88,7 +99,7 @@ function handlePing(request) {
   return createJsonRpcResponse(request.id, {});
 }
 
-function processJsonRpcMessage(message) {
+async function processJsonRpcMessage(message) {
   try {
     if (message.jsonrpc !== "2.0") {
       return createJsonRpcResponse(message.id, null, {
@@ -103,7 +114,7 @@ function processJsonRpcMessage(message) {
       case "tools/list":
         return handleToolsList(message);
       case "tools/call":
-        return handleToolsCall(message);
+        return await handleToolsCall(message);
       case "ping":
         return handlePing(message);
       default:
@@ -146,29 +157,28 @@ module.exports = async (req, res) => {
   setCORSHeaders(res);
 
   if (req.method === "OPTIONS") {
-    res.writeHead(200);
+    res.statusCode = 200;
     res.end();
     return;
   }
 
   if (req.url === "/health" || req.url === "/") {
-    const response = {
+    res.setHeader("Content-Type", "application/json");
+    res.statusCode = 200;
+    res.end(JSON.stringify({
       status: "healthy",
       server: SERVER_INFO.name,
       version: SERVER_INFO.version,
       protocol: MCP_PROTOCOL_VERSION,
       timestamp,
-      tools: loadedTools.map(t => t.tool.name),
+      tools: loadedTools.flatMap(t => Array.isArray(t.tool) ? t.tool.map(tt => tt.name) : [t.tool.name]),
       endpoint: "/sse"
-    };
-
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(response));
+    }));
     return;
   }
 
   if (req.url?.includes("favicon")) {
-    res.writeHead(404);
+    res.statusCode = 404;
     res.end();
     return;
   }
@@ -186,7 +196,7 @@ module.exports = async (req, res) => {
     if (req.method === "GET") {
       sendSSE(res, createJsonRpcNotification("notification/initialized", {}));
       sendSSE(res, createJsonRpcNotification("notification/tools/list_changed", {
-        tools: loadedTools.map(t => t.tool)
+        tools: loadedTools.flatMap(t => Array.isArray(t.tool) ? t.tool : [t.tool])
       }));
 
       const pingInterval = setInterval(() => {
@@ -206,10 +216,10 @@ module.exports = async (req, res) => {
     if (req.method === "POST") {
       let body = "";
       req.on("data", chunk => body += chunk.toString());
-      req.on("end", () => {
+      req.on("end", async () => {
         try {
           const message = JSON.parse(body);
-          const response = processJsonRpcMessage(message);
+          const response = await processJsonRpcMessage(message);
           sendSSE(res, response);
           setTimeout(() => res.end(), 100);
         } catch (err) {
@@ -224,6 +234,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  res.writeHead(404, { "Content-Type": "application/json" });
+  res.statusCode = 404;
+  res.setHeader("Content-Type", "application/json");
   res.end(JSON.stringify({ error: "Not found" }));
 };

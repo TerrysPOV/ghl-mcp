@@ -394,12 +394,15 @@ export class GHLApiClient {
   constructor(config: GHLConfig) {
     this.config = config;
     
+    // Default API version if not provided
+    const DEFAULT_API_VERSION = process.env.GHL_API_VERSION || '2021-07-28';
+    
     // Create axios instance with base configuration
     this.axiosInstance = axios.create({
       baseURL: config.baseUrl,
       headers: {
         'Authorization': `Bearer ${config.accessToken}`,
-        'Version': config.version,
+        'Version': config.version || DEFAULT_API_VERSION,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },

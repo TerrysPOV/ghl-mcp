@@ -387,4 +387,21 @@ export class AssociationTools {
       };
     }
   }
-} 
+}
+import dotenv from 'dotenv';
+dotenv.config();
+
+const apiKey = process.env.GHL_API_KEY!;
+const baseUrl = process.env.GHL_BASE_URL!;
+
+if (!apiKey || !baseUrl) {
+  throw new Error("Missing GHL_API_KEY or GHL_API_BASE_URL in environment variables.");
+}
+
+// If GHLConfig expects 'apiKey' and 'baseUrl', ensure they are included in its type definition.
+// Otherwise, only pass the properties that GHLConfig expects, for example:
+const client = new GHLApiClient({ apiKey: apiKey, baseUrl: baseUrl } as any);
+const instance = new AssociationTools(client);
+
+export const tool = instance.getTools();
+export const handler = instance.executeAssociationTool.bind(instance);
