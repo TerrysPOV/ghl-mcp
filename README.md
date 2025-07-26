@@ -1,19 +1,13 @@
-# GoHighLevel MCP Server 🚀
+# GoHighLevel MCP Server (Claude Code Compatible Fork)
 
-A comprehensive Model Context Protocol (MCP) server that provides complete GoHighLevel API integration for Claude Desktop and ChatGPT. This server enables AI assistants to interact with all GoHighLevel functionality through a standardized interface.
+This is a customized deployment of the [original GoHighLevel MCP Server](https://github.com/mastanley13/GoHighLevel-MCP), adapted specifically for Claude Code and ChatGPT integrations with complete GoHighLevel API coverage.
+
+> 🛠 This fork replaces the original mock tools with full GoHighLevel API integration (253 tools) and includes production-ready deployment configuration for Render.
 
 [![Deploy](https://img.shields.io/badge/Deploy-Render-brightgreen)](https://render.com)
 [![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-blue)](https://modelcontextprotocol.io)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue)](https://typescriptlang.org)
-
-## 🌟 Live Demo
-
-**Production Server**: `https://ghl-mcp-4o2o.onrender.com`
-
-- **Health Check**: [https://ghl-mcp-4o2o.onrender.com/health](https://ghl-mcp-4o2o.onrender.com/health)
-- **Tools Available**: 253 GoHighLevel API tools
-- **Status**: ✅ Fully operational
 
 ## 📋 Features
 
@@ -115,13 +109,7 @@ A comprehensive Model Context Protocol (MCP) server that provides complete GoHig
 
 ## 🚀 Quick Start
 
-### Option 1: Use Our Live Server
-Connect directly to our production server:
-```
-https://ghl-mcp-4o2o.onrender.com
-```
-
-### Option 2: Deploy Your Own
+### Deploy Your Own Instance
 
 #### Deploy to Render
 
@@ -142,44 +130,53 @@ https://ghl-mcp-4o2o.onrender.com
 
 ## 🔧 Integration
 
-### Claude Desktop MCP
+### Claude Code MCP Integration
 
-Our server uses a custom HTTP JSON-RPC implementation that works with direct HTTP requests. For Claude Desktop integration, you have two options:
+#### Method 1: HTTP Transport (Recommended)
+Add the server using Claude Code CLI:
 
-#### Option 1: Direct HTTP Integration (Recommended)
-Use curl or HTTP client directly:
 ```bash
-# This server works with direct HTTP requests to /sse endpoint
-curl -X POST https://ghl-mcp-4o2o.onrender.com/sse \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": "1", "method": "tools/list", "params": {}}'
+claude mcp add --transport http leadconnector https://<your-deployment-url>/sse
 ```
 
-#### Option 2: Claude Code HTTP MCP (Experimental)
+Replace `<your-deployment-url>` with your Render service URL (e.g., https://ghl-mcp-xxxx.onrender.com).
+
+Verify the connection:
+```bash
+claude mcp list
+```
+
+#### Method 2: Manual Configuration
 Add to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "gohighlevel": {
+    "leadconnector": {
       "command": "npx",
-      "args": ["@modelcontextprotocol/server-fetch", "https://ghl-mcp-4o2o.onrender.com/sse"]
+      "args": ["@modelcontextprotocol/server-fetch", "https://<your-deployment-url>/sse"]
     }
   }
 }
 ```
 
-**Note**: This server is optimized for direct HTTP/API integration rather than the standard MCP protocol. If you encounter connection issues with Claude Desktop, use the direct HTTP API instead.
+#### Method 3: Direct HTTP API
+For direct integration without MCP:
+```bash
+curl -X POST https://<your-deployment-url>/sse \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": "1", "method": "tools/list", "params": {}}'
+```
 
 ### Direct HTTP API
 
 #### Health Check
 ```bash
-curl https://ghl-mcp-4o2o.onrender.com/health
+curl https://<your-deployment-url>/health
 ```
 
 #### List Available Tools
 ```bash
-curl -X POST https://ghl-mcp-4o2o.onrender.com/sse \
+curl -X POST https://<your-deployment-url>/sse \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -191,7 +188,7 @@ curl -X POST https://ghl-mcp-4o2o.onrender.com/sse \
 
 #### Create Contact Example
 ```bash
-curl -X POST https://ghl-mcp-4o2o.onrender.com/sse \
+curl -X POST https://<your-deployment-url>/sse \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -322,23 +319,23 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Attribution
 
-This project is based on [mastanley13/GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP). 
+This project is based on [mastanley13/GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP). All credit for the original structure and MCP implementation goes to the original author.
 
-**Enhanced for production by**: Terry Yodaiken
-- ✅ Fixed Version header issues
-- ✅ Added complete tool coverage (253 tools)
-- ✅ Render deployment optimization
-- ✅ Production-ready error handling
-- ✅ Comprehensive documentation
+**This fork was enhanced for production by**: Terry Yodaiken
+- ✅ Fixed Version header issues for GHL API compatibility
+- ✅ Added complete tool coverage (253 tools vs original mock tools)
+- ✅ Render deployment optimization with TypeScript build pipeline
+- ✅ Production-ready error handling and logging
+- ✅ Comprehensive documentation and deployment guides
 
 ## 📞 Support
 
 - **Issues**: [GitHub Issues](https://github.com/TerrysPOV/ghl-mcp/issues)
 - **Documentation**: This README and inline code comments
-- **Live Server**: https://ghl-mcp-4o2o.onrender.com
+- **Original Project**: [mastanley13/GoHighLevel-MCP](https://github.com/mastanley13/GoHighLevel-MCP)
 
 ---
 
-*Last updated: July 25, 2025*
-*Server Status: ✅ Operational*
+*Last updated: July 26, 2025*
+*Production Status: ✅ Ready for deployment*
 *Tools Available: 253*
